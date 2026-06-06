@@ -45,7 +45,7 @@ export function StockDetail() {
 
   async function saveCurrentPrice() {
     const price = parseFloat(priceInput)
-    if (isNaN(price) || price <= 0) return
+    if (isNaN(price) || price <= 0 || !stock) return
 
     setIsSavingPrice(true)
     try {
