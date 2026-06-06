@@ -10,12 +10,23 @@ import { useStockStore } from "@/store/stockStore"
 import { Loader2 } from "lucide-react"
 
 export function DashboardClient() {
-  const { fetchStocks, fetchExchangeRate, isLoading, selectedStockId } = useStockStore()
+  const { fetchStocks, fetchExchangeRate, refreshLivePrices, isLoading, selectedStockId } = useStockStore()
 
   useEffect(() => {
     fetchStocks()
     fetchExchangeRate()
   }, [fetchStocks, fetchExchangeRate])
+
+  // Keep current prices "running with the market": poll live quotes
+  // for every symbol in the portfolio on a steady interval.
+  useEffect(() => {
+    const LIVE_PRICE_INTERVAL = 20_000 // 20s — matches the price API's cache TTL
+    refreshLivePrices()
+    const id = setInterval(() => {
+      refreshLivePrices()
+    }, LIVE_PRICE_INTERVAL)
+    return () => clearInterval(id)
+  }, [refreshLivePrices])
 
   return (
     <div className="min-h-screen bg-background">

@@ -26,6 +26,7 @@ interface StockStore {
   // Fetch actions
   fetchStocks: () => Promise<void>
   fetchExchangeRate: () => Promise<void>
+  refreshLivePrices: () => Promise<void>
 }
 
 export const useStockStore = create<StockStore>((set, get) => ({
@@ -73,6 +74,32 @@ export const useStockStore = create<StockStore>((set, get) => ({
       set({ exchangeRate: { rate: data.rate, updatedAt: data.updatedAt } })
     } catch {
       // Silently fail — fallback rate used in calculations
+    }
+  },
+
+  // Poll live market quotes for every symbol currently in the portfolio
+  // and patch each stock's currentPrice so stats recalculate "live".
+  refreshLivePrices: async () => {
+    const { stocks } = get()
+    if (stocks.length === 0) return
+
+    const symbols = Array.from(new Set(stocks.map((s) => s.symbol.toUpperCase())))
+    if (symbols.length === 0) return
+
+    try {
+      const res = await fetch(`/api/stock-price?symbols=${encodeURIComponent(symbols.join(","))}`)
+      if (!res.ok) return
+      const data = await res.json()
+      const prices: Record<string, { price: number } | null> = data?.prices ?? {}
+
+      set((s) => ({
+        stocks: s.stocks.map((stock) => {
+          const quote = prices[stock.symbol.toUpperCase()]
+          return quote?.price ? { ...stock, currentPrice: quote.price } : stock
+        }),
+      }))
+    } catch {
+      // Silently fail — keep showing the last known prices
     }
   },
 }))

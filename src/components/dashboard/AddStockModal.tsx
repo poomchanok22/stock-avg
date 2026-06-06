@@ -3,8 +3,10 @@
 import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Loader2 } from "lucide-react"
+import { Plus, Loader2, Sparkles } from "lucide-react"
 import { createStockSchema, type CreateStockInput } from "@/schemas/stock"
+import { POPULAR_STOCKS, type PopularStock } from "@/lib/popularStocks"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -22,6 +24,8 @@ import { useStockStore } from "@/store/stockStore"
 export function AddStockModal() {
   const [open, setOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [pickedSymbol, setPickedSymbol] = useState<string | null>(null)
+  const [isFetchingPrice, setIsFetchingPrice] = useState(false)
   const { addStock } = useStockStore()
   const { toast } = useToast()
 
@@ -29,6 +33,27 @@ export function AddStockModal() {
     resolver: zodResolver(createStockSchema),
     defaultValues: { symbol: "", name: "", currency: "USD", currentPrice: undefined },
   })
+
+  async function pickPopularStock(stock: PopularStock) {
+    setPickedSymbol(stock.symbol)
+    form.setValue("symbol", stock.symbol, { shouldValidate: true })
+    form.setValue("name", stock.name, { shouldValidate: true })
+    form.setValue("currency", stock.currency, { shouldValidate: true })
+
+    setIsFetchingPrice(true)
+    try {
+      const res = await fetch(`/api/stock-price?symbols=${encodeURIComponent(stock.symbol)}`)
+      const json = await res.json()
+      const quote = json?.prices?.[stock.symbol]
+      if (quote?.price) {
+        form.setValue("currentPrice", quote.price, { shouldValidate: true })
+      }
+    } catch {
+      // Silently ignore — user can still type the price manually
+    } finally {
+      setIsFetchingPrice(false)
+    }
+  }
 
   async function onSubmit(data: CreateStockInput) {
     setIsLoading(true)
@@ -48,6 +73,7 @@ export function AddStockModal() {
       addStock(json)
       toast({ title: "เพิ่มหุ้นสำเร็จ", description: `เพิ่ม ${json.symbol} เข้าพอร์ตแล้ว` })
       form.reset()
+      setPickedSymbol(null)
       setOpen(false)
     } finally {
       setIsLoading(false)
@@ -55,7 +81,16 @@ export function AddStockModal() {
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o)
+        if (!o) {
+          form.reset()
+          setPickedSymbol(null)
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button>
           <Plus className="mr-2 h-4 w-4" />
@@ -67,6 +102,35 @@ export function AddStockModal() {
         <DialogHeader>
           <DialogTitle>เพิ่มหุ้นใหม่</DialogTitle>
         </DialogHeader>
+
+        <div className="space-y-2">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5" />
+            เลือกจากหุ้นยอดนิยม (ราคาจะดึงสด ๆ ให้อัตโนมัติ)
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {POPULAR_STOCKS.map((stock) => (
+              <button
+                key={stock.symbol}
+                type="button"
+                onClick={() => pickPopularStock(stock)}
+                disabled={isFetchingPrice}
+                className={cn(
+                  "rounded-full border px-2.5 py-1 text-xs font-mono font-medium transition-colors",
+                  pickedSymbol === stock.symbol
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background hover:bg-muted",
+                  isFetchingPrice && pickedSymbol !== stock.symbol && "opacity-50"
+                )}
+              >
+                {pickedSymbol === stock.symbol && isFetchingPrice && (
+                  <Loader2 className="mr-1 inline h-3 w-3 animate-spin align-[-1px]" />
+                )}
+                {stock.symbol}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
