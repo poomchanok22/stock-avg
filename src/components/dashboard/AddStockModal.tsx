@@ -1,82 +1,110 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Loader2, Sparkles } from "lucide-react"
-import { createStockSchema, type CreateStockInput } from "@/schemas/stock"
-import { POPULAR_STOCKS, type PopularStock } from "@/lib/popularStocks"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus, Loader2, Sparkles } from "lucide-react";
+import { createStockSchema, type CreateStockInput } from "@/schemas/stock";
+import { POPULAR_STOCKS, type PopularStock } from "@/lib/popularStocks";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
-} from "@/components/ui/dialog"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form"
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import { useStockStore } from "@/store/stockStore"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/components/ui/use-toast";
+import { useStockStore } from "@/store/stockStore";
 
 export function AddStockModal() {
-  const [open, setOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [pickedSymbol, setPickedSymbol] = useState<string | null>(null)
-  const [isFetchingPrice, setIsFetchingPrice] = useState(false)
-  const { addStock } = useStockStore()
-  const { toast } = useToast()
+  const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [pickedSymbol, setPickedSymbol] = useState<string | null>(null);
+  const [isFetchingPrice, setIsFetchingPrice] = useState(false);
+  const { addStock } = useStockStore();
+  const { toast } = useToast();
 
   const form = useForm<CreateStockInput>({
     resolver: zodResolver(createStockSchema),
-    defaultValues: { symbol: "", name: "", currency: "USD", currentPrice: undefined },
-  })
+    defaultValues: {
+      symbol: "",
+      name: "",
+      currency: "USD",
+      currentPrice: undefined,
+    },
+  });
 
   async function pickPopularStock(stock: PopularStock) {
-    setPickedSymbol(stock.symbol)
-    form.setValue("symbol", stock.symbol, { shouldValidate: true })
-    form.setValue("name", stock.name, { shouldValidate: true })
-    form.setValue("currency", stock.currency, { shouldValidate: true })
+    setPickedSymbol(stock.symbol);
+    form.setValue("symbol", stock.symbol, { shouldValidate: true });
+    form.setValue("name", stock.name, { shouldValidate: true });
+    form.setValue("currency", stock.currency, { shouldValidate: true });
 
-    setIsFetchingPrice(true)
+    setIsFetchingPrice(true);
     try {
-      const res = await fetch(`/api/stock-price?symbols=${encodeURIComponent(stock.symbol)}`)
-      const json = await res.json()
-      const quote = json?.prices?.[stock.symbol]
+      const res = await fetch(
+        `/api/stock-price?symbols=${encodeURIComponent(stock.symbol)}`,
+      );
+      const json = await res.json();
+      const quote = json?.prices?.[stock.symbol];
       if (quote?.price) {
-        form.setValue("currentPrice", quote.price, { shouldValidate: true })
+        form.setValue("currentPrice", quote.price, { shouldValidate: true });
       }
     } catch {
       // Silently ignore — user can still type the price manually
     } finally {
-      setIsFetchingPrice(false)
+      setIsFetchingPrice(false);
     }
   }
 
   async function onSubmit(data: CreateStockInput) {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const res = await fetch("/api/stocks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
-      })
-      const json = await res.json()
+      });
+      const json = await res.json();
 
       if (!res.ok) {
-        toast({ title: "Error", description: json.error, variant: "destructive" })
-        return
+        toast({
+          title: "Error",
+          description: json.error,
+          variant: "destructive",
+        });
+        return;
       }
 
-      addStock(json)
-      toast({ title: "เพิ่มหุ้นสำเร็จ", description: `เพิ่ม ${json.symbol} เข้าพอร์ตแล้ว` })
-      form.reset()
-      setPickedSymbol(null)
-      setOpen(false)
+      addStock(json);
+      toast({
+        title: "เพิ่มหุ้นสำเร็จ",
+        description: `เพิ่ม ${json.symbol} เข้าพอร์ตแล้ว`,
+      });
+      form.reset();
+      setPickedSymbol(null);
+      setOpen(false);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -84,10 +112,10 @@ export function AddStockModal() {
     <Dialog
       open={open}
       onOpenChange={(o) => {
-        setOpen(o)
+        setOpen(o);
         if (!o) {
-          form.reset()
-          setPickedSymbol(null)
+          form.reset();
+          setPickedSymbol(null);
         }
       }}
     >
@@ -120,7 +148,9 @@ export function AddStockModal() {
                   pickedSymbol === stock.symbol
                     ? "border-primary bg-primary text-primary-foreground"
                     : "border-input bg-background hover:bg-muted",
-                  isFetchingPrice && pickedSymbol !== stock.symbol && "opacity-50"
+                  isFetchingPrice &&
+                    pickedSymbol !== stock.symbol &&
+                    "opacity-50",
                 )}
               >
                 {pickedSymbol === stock.symbol && isFetchingPrice && (
@@ -143,9 +173,10 @@ export function AddStockModal() {
                     <FormLabel>Ticker Symbol</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="NVDA"
                         {...field}
-                        onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                        onChange={(e) =>
+                          field.onChange(e.target.value.toUpperCase())
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -158,7 +189,10 @@ export function AddStockModal() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>สกุลเงิน</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
@@ -182,7 +216,7 @@ export function AddStockModal() {
                 <FormItem>
                   <FormLabel>ชื่อบริษัท</FormLabel>
                   <FormControl>
-                    <Input placeholder="NVIDIA Corporation" {...field} />
+                    <Input {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -197,13 +231,16 @@ export function AddStockModal() {
                   <FormLabel>ราคาปัจจุบัน (ไม่บังคับ)</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="205.10"
                       type="number"
                       step="0.0001"
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) =>
-                        field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)
+                        field.onChange(
+                          e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
+                        )
                       }
                     />
                   </FormControl>
@@ -213,7 +250,11 @@ export function AddStockModal() {
             />
 
             <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+              >
                 ยกเลิก
               </Button>
               <Button type="submit" disabled={isLoading}>
@@ -225,5 +266,5 @@ export function AddStockModal() {
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

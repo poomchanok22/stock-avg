@@ -1,51 +1,70 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Plus, Loader2 } from "lucide-react"
-import { createPurchaseSchema, type CreatePurchaseInput } from "@/schemas/stock"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { CurrencyInput } from "@/components/ui/currency-input"
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus, Loader2 } from "lucide-react";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
-} from "@/components/ui/dialog"
+  createPurchaseSchema,
+  type CreatePurchaseInput,
+} from "@/schemas/stock";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form"
-import { useToast } from "@/components/ui/use-toast"
-import { useStockStore } from "@/store/stockStore"
-import { formatDateInput, formatNumber } from "@/lib/utils"
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { useToast } from "@/components/ui/use-toast";
+import { useStockStore } from "@/store/stockStore";
+import { formatDateInput, formatNumber } from "@/lib/utils";
 
-type Currency = "USD" | "THB"
+type Currency = "USD" | "THB";
 
 interface AddPurchaseModalProps {
-  stockId: string
-  stockSymbol: string
+  stockId: string;
+  stockSymbol: string;
 }
 
-export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps) {
-  const [open, setOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+export function AddPurchaseModal({
+  stockId,
+  stockSymbol,
+}: AddPurchaseModalProps) {
+  const [open, setOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Currency selectors per field
-  const [priceCurrency, setPriceCurrency] = useState<Currency>("USD")
-  const [commCurrency, setCommCurrency] = useState<Currency>("USD")
-  const [whtCurrency, setWhtCurrency] = useState<Currency>("USD")
+  const [priceCurrency, setPriceCurrency] = useState<Currency>("USD");
+  const [commCurrency, setCommCurrency] = useState<Currency>("USD");
+  const [whtCurrency, setWhtCurrency] = useState<Currency>("USD");
 
-  const { updateStock, stocks, exchangeRate } = useStockStore()
-  const { toast } = useToast()
-  const rate = exchangeRate?.rate ?? 35.5
+  const { updateStock, stocks, exchangeRate } = useStockStore();
+  const { toast } = useToast();
+  const rate = exchangeRate?.rate ?? 35.5;
 
   const toUSD = (value: number | undefined, currency: Currency) =>
-    value == null ? undefined : currency === "THB" ? value / rate : value
+    value == null ? undefined : currency === "THB" ? value / rate : value;
 
-  const preview = (value: number | undefined, currency: Currency): string | null => {
-    if (!value) return null
-    if (currency === "THB") return `≈ $${formatNumber(value / rate, 4)}`
-    return `≈ ฿${formatNumber(value * rate, 2)}`
-  }
+  const preview = (
+    value: number | undefined,
+    currency: Currency,
+  ): string | null => {
+    if (!value) return null;
+    if (currency === "THB") return `≈ $${formatNumber(value / rate, 4)}`;
+    return `≈ ฿${formatNumber(value * rate, 2)}`;
+  };
 
   const form = useForm<CreatePurchaseInput>({
     resolver: zodResolver(createPurchaseSchema),
@@ -57,7 +76,7 @@ export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps
       withholdingTax: 0,
       note: "",
     },
-  })
+  });
 
   function resetForm() {
     form.reset({
@@ -67,58 +86,66 @@ export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps
       commission: 0,
       withholdingTax: 0,
       note: "",
-    })
-    setPriceCurrency("USD")
-    setCommCurrency("USD")
-    setWhtCurrency("USD")
+    });
+    setPriceCurrency("USD");
+    setCommCurrency("USD");
+    setWhtCurrency("USD");
   }
 
   async function onSubmit(data: CreatePurchaseInput) {
     // Convert all values to USD before saving
     const payload = {
       ...data,
-      pricePerShare: toUSD(data.pricePerShare, priceCurrency) ?? data.pricePerShare,
+      pricePerShare:
+        toUSD(data.pricePerShare, priceCurrency) ?? data.pricePerShare,
       commission: toUSD(data.commission, commCurrency) ?? 0,
       withholdingTax: toUSD(data.withholdingTax, whtCurrency) ?? 0,
-    }
+    };
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const res = await fetch(`/api/stocks/${stockId}/purchases`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      })
-      const json = await res.json()
+      });
+      const json = await res.json();
 
       if (!res.ok) {
-        toast({ title: "Error", description: json.error, variant: "destructive" })
-        return
+        toast({
+          title: "Error",
+          description: json.error,
+          variant: "destructive",
+        });
+        return;
       }
 
-      const stock = stocks.find((s) => s.id === stockId)
+      const stock = stocks.find((s) => s.id === stockId);
       if (stock) {
-        updateStock(stockId, { purchases: [...stock.purchases, json] })
+        updateStock(stockId, { purchases: [...stock.purchases, json] });
       }
 
-      toast({ title: "บันทึกการซื้อแล้ว", description: `เพิ่มรายการซื้อ ${stockSymbol} สำเร็จ` })
-      resetForm()
-      setOpen(false)
+      toast({
+        title: "บันทึกการซื้อแล้ว",
+        description: `เพิ่มรายการซื้อ ${stockSymbol} สำเร็จ`,
+      });
+      resetForm();
+      setOpen(false);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
-  const watchShares = form.watch("shares")
-  const watchPrice = form.watch("pricePerShare")
-  const watchComm = form.watch("commission") ?? 0
-  const watchWHT = form.watch("withholdingTax") ?? 0
+  const watchShares = form.watch("shares");
+  const watchPrice = form.watch("pricePerShare");
+  const watchComm = form.watch("commission") ?? 0;
+  const watchWHT = form.watch("withholdingTax") ?? 0;
 
   // Total cost always displayed in USD
-  const priceUSD = toUSD(watchPrice, priceCurrency) ?? 0
-  const commUSD = toUSD(watchComm, commCurrency) ?? 0
-  const whtUSD = toUSD(watchWHT, whtCurrency) ?? 0
-  const totalCostUSD = (watchShares ?? 0) * priceUSD + commUSD + whtUSD
+  const priceUSD = toUSD(watchPrice, priceCurrency) ?? 0;
+  const commUSD = toUSD(watchComm, commCurrency) ?? 0;
+  const whtUSD = toUSD(watchWHT, whtCurrency) ?? 0;
+  const totalCostUSD = (watchShares ?? 0) * priceUSD + commUSD + whtUSD;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -161,12 +188,17 @@ export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps
                     <FormLabel>จำนวนหุ้น</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="1.5"
                         type="number"
                         step="0.000001"
                         {...field}
                         value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value ? parseFloat(e.target.value) : undefined)}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value
+                              ? parseFloat(e.target.value)
+                              : undefined,
+                          )
+                        }
                       />
                     </FormControl>
                     <FormMessage />
@@ -185,7 +217,6 @@ export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps
                         onChange={field.onChange}
                         currency={priceCurrency}
                         onCurrencyChange={setPriceCurrency}
-                        placeholder={priceCurrency === "USD" ? "205.10" : "7,200"}
                         step="0.0001"
                         preview={preview(field.value, priceCurrency)}
                       />
@@ -210,8 +241,10 @@ export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps
                         onChange={(v) => field.onChange(v ?? 0)}
                         currency={commCurrency}
                         onCurrencyChange={setCommCurrency}
-                        placeholder="0"
-                        preview={preview(field.value || undefined, commCurrency)}
+                        preview={preview(
+                          field.value || undefined,
+                          commCurrency,
+                        )}
                       />
                     </FormControl>
                     <FormMessage />
@@ -230,7 +263,6 @@ export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps
                         onChange={(v) => field.onChange(v ?? 0)}
                         currency={whtCurrency}
                         onCurrencyChange={setWhtCurrency}
-                        placeholder="0"
                         preview={preview(field.value || undefined, whtCurrency)}
                       />
                     </FormControl>
@@ -248,7 +280,11 @@ export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps
                 <FormItem>
                   <FormLabel>หมายเหตุ (ไม่บังคับ)</FormLabel>
                   <FormControl>
-                    <Input placeholder="เช่น ซื้อเพิ่มตอนราคาลง" {...field} value={field.value ?? ""} />
+                    <Input
+                      placeholder="เช่น ซื้อเพิ่มตอนราคาลง"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -259,18 +295,33 @@ export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps
             {totalCostUSD > 0 && (
               <div className="rounded-md bg-muted px-4 py-3 text-sm space-y-0.5">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">ต้นทุนครั้งนี้ (USD)</span>
-                  <span className="font-semibold font-mono">${formatNumber(totalCostUSD)}</span>
+                  <span className="text-muted-foreground">
+                    ต้นทุนครั้งนี้ (USD)
+                  </span>
+                  <span className="font-semibold font-mono">
+                    ${formatNumber(totalCostUSD)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">≈ THB (rate {rate.toFixed(2)})</span>
-                  <span className="font-mono text-muted-foreground">฿{formatNumber(totalCostUSD * rate, 0)}</span>
+                  <span className="text-muted-foreground">
+                    ≈ THB (rate {rate.toFixed(2)})
+                  </span>
+                  <span className="font-mono text-muted-foreground">
+                    ฿{formatNumber(totalCostUSD * rate, 0)}
+                  </span>
                 </div>
               </div>
             )}
 
             <DialogFooter className="gap-2">
-              <Button type="button" variant="outline" onClick={() => { resetForm(); setOpen(false) }}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  resetForm();
+                  setOpen(false);
+                }}
+              >
                 ยกเลิก
               </Button>
               <Button type="submit" disabled={isLoading}>
@@ -282,5 +333,5 @@ export function AddPurchaseModal({ stockId, stockSymbol }: AddPurchaseModalProps
         </Form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

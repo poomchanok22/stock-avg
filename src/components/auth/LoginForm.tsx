@@ -1,48 +1,64 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { signIn } from "next-auth/react"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, TrendingUp } from "lucide-react"
-import { loginSchema, type LoginInput } from "@/schemas/auth"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeOff, Loader2, TrendingUp } from "lucide-react";
+import { loginSchema, type LoginInput } from "@/schemas/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
-} from "@/components/ui/form"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useToast } from "@/components/ui/use-toast"
-import Link from "next/link"
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
+import Link from "next/link";
 
 export function LoginForm() {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
-  })
+  });
 
   async function onSubmit(data: LoginInput) {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
       const result = await signIn("credentials", {
         email: data.email,
         password: data.password,
         redirect: false,
-      })
+      });
 
       if (result?.error) {
-        toast({ title: "Login failed", description: result.error, variant: "destructive" })
+        toast({
+          title: "Login failed",
+          description: result.error,
+          variant: "destructive",
+        });
       } else {
-        router.push("/dashboard")
-        router.refresh()
+        router.push("/dashboard");
+        router.refresh();
       }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
@@ -54,17 +70,24 @@ export function LoginForm() {
             <TrendingUp className="h-6 w-6" />
           </div>
           <h1 className="text-2xl font-bold">Stock AVG Calculator</h1>
-          <p className="text-sm text-muted-foreground">คำนวณต้นทุนเฉลี่ยหุ้นของคุณ</p>
+          <p className="text-sm text-muted-foreground">
+            คำนวณต้นทุนเฉลี่ยหุ้นของคุณ
+          </p>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle>เข้าสู่ระบบ</CardTitle>
-            <CardDescription>กรอก Email และ Password เพื่อเข้าใช้งาน</CardDescription>
+            <CardDescription>
+              กรอก Email และ Password เพื่อเข้าใช้งาน
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form
+                onSubmit={form.handleSubmit(onSubmit)}
+                className="space-y-4"
+              >
                 <FormField
                   control={form.control}
                   name="email"
@@ -72,7 +95,11 @@ export function LoginForm() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="you@example.com" type="email" {...field} />
+                        <Input
+                          placeholder="Enter your email"
+                          type="email"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -85,7 +112,26 @@ export function LoginForm() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input placeholder="••••••••" type="password" {...field} />
+                        <div className="relative">
+                          <Input
+                            placeholder="Enter your password"
+                            type={showPassword ? "text" : "password"}
+                            {...field}
+                            className="pr-10"
+                          />
+
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -93,7 +139,9 @@ export function LoginForm() {
                 />
 
                 <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isLoading && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
                   เข้าสู่ระบบ
                 </Button>
               </form>
@@ -101,19 +149,22 @@ export function LoginForm() {
 
             <div className="mt-4 text-center text-sm text-muted-foreground">
               ยังไม่มีบัญชี?{" "}
-              <Link href="/register" className="text-primary hover:underline font-medium">
+              <Link
+                href="/register"
+                className="text-primary hover:underline font-medium"
+              >
                 สมัครสมาชิก
               </Link>
             </div>
 
-            <div className="mt-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">
+            {/* <div className="mt-4 rounded-md bg-muted p-3 text-xs text-muted-foreground">
               <p className="font-medium mb-1">Demo Account:</p>
               <p>Email: demo@example.com</p>
               <p>Password: demo1234</p>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }
